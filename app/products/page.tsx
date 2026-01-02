@@ -89,7 +89,7 @@ export default function ProductsPage() {
                   src={product.image}
                   alt={product.name}
                   fill
-                  sizes="(max-width: 768px) 100vw, 600px"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover transition duration-300 hover:scale-105"
                   priority={product.name === "Baby Spinach"}
                 />
@@ -101,46 +101,43 @@ export default function ProductsPage() {
                 ) : null}
               </Link>
 
-              <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <Link href={`/products/${product.id}`} className="text-sm font-semibold text-foreground hover:underline">
+              <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <Link href={`/products/${product.id}`} className="text-sm font-semibold text-foreground hover:underline line-clamp-1">
                       {product.name}
                     </Link>
                     <p className="text-xs text-muted-foreground">
                       {product.category?.name ?? "Uncategorized"}
                     </p>
                   </div>
-                  <span className="rounded-full bg-lime-50 px-3 py-1 text-xs font-medium text-lime-800 ring-1 ring-lime-100">
-                    {product.category?.name ?? "Uncategorized"}
-                  </span>
                 </div>
-                  <p className="mt-3 flex-1 text-sm text-muted-foreground">{product.description}</p>
-                  <p className="text-xs text-muted-foreground">In stock: {product.quantity}</p>
+                  <p className="mt-2 flex-1 text-xs text-muted-foreground line-clamp-2">{product.description}</p>
+                  <p className="text-xs text-muted-foreground mt-1">In stock: {product.quantity}</p>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-lime-800">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-lime-50 px-3 py-1 ring-1 ring-lime-100">
-                    <CheckCircle2 className="size-3.5" />
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs font-medium text-lime-800">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-lime-50 px-2 py-0.5 ring-1 ring-lime-100">
+                    <CheckCircle2 className="size-3" />
                     QA passed
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-blue-800 ring-1 ring-blue-100">
-                    <Truck className="size-3.5" />
-                    {product.freshness}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-blue-800 ring-1 ring-blue-100">
+                    <Truck className="size-3" />
+                    Fresh
                   </span>
                 </div>
 
-                <div className="mt-5 flex items-center justify-between">
+                <div className="mt-4 flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-lg font-semibold text-foreground">{formatNaira(product.price)}</p>
-                    <p className="text-xs text-muted-foreground">Excluding freight & duties</p>
+                    <p className="text-base font-semibold text-foreground">{formatNaira(product.price)}</p>
+                    <p className="text-xs text-muted-foreground">Ex. freight</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/products/${product.id}`}>Details</Link>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="text-xs px-2" asChild>
+                      <Link href={`/products/${product.id}`}>View</Link>
                     </Button>
                     <Button
                       size="sm"
-                      className="gap-2"
+                      className="gap-1.5 text-xs px-2"
                       onClick={() =>
                       {
                         addItem({
@@ -157,8 +154,8 @@ export default function ProductsPage() {
                       }
                       }
                     >
-                      <ShoppingBasket className="size-4" />
-                      Add to cart
+                      <ShoppingBasket className="size-3.5" />
+                      Add
                     </Button>
                   </div>
                 </div>
