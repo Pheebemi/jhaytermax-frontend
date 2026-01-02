@@ -26,24 +26,29 @@ export default function AdminDashboardPage() {
     const init = async () => {
       const tokens = getTokens()
       if (!tokens) {
-        router.replace("/admin/login")
+        router.replace("/login")
         return
       }
       try {
         const me = await ensureProfileWithRefresh()
         const isAdmin = me.role === "admin" || me.is_staff || me.is_superuser
         if (!isAdmin) {
-          router.replace("/admin/login")
+          router.replace("/login")
           return
         }
-        const [p, c] = await Promise.all([fetchProducts(), fetchCategories()])
-        setProducts(p)
-        setCategories(c)
+        setAuthChecked(true)
+        // Load data after auth check passes
+        try {
+          const [p, c] = await Promise.all([fetchProducts(), fetchCategories()])
+          setProducts(p)
+          setCategories(c)
+        } catch (err: any) {
+          console.error("Failed to load data:", err)
+          // Don't redirect on data fetch errors, just log them
+        }
       } catch {
         router.replace("/login")
         return
-      } finally {
-        setAuthChecked(true)
       }
     }
     init()

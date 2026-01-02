@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   ShoppingCart,
+  Tags,
   User,
   Users,
   X,
@@ -33,6 +34,7 @@ const adminNav = [
   { href: "/admin/suppliers", label: "Suppliers", icon: ShieldCheck },
   { href: "/admin/orders", label: "Orders", icon: Package },
   { href: "/admin/products", label: "Products", icon: ShoppingBag },
+  { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/teams", label: "Teams", icon: Users },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
 ]
@@ -103,7 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <button
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left hover:bg-slate-50"
           onClick={() => {
-            logoutAndRedirect(router, isAdmin ? "/admin/login" : "/login")
+            logoutAndRedirect(router, "/login")
           }}
         >
           <LogOut className="size-4 text-destructive" />

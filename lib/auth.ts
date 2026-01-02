@@ -153,10 +153,59 @@ export async function ensureProfileWithRefresh(): Promise<UserProfile> {
   }
 }
 
-export async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch(`${API_BASE}/api/products/categories/`, { cache: "no-store" })
-  if (!res.ok) throw new Error("Failed to load categories")
+export async function fetchCategories(useAuth = false): Promise<Category[]> {
+  const url = `${API_BASE}/api/products/categories/`
+  const res = useAuth
+    ? await fetchWithAuth(url, { cache: "no-store" })
+    : await fetch(url, { cache: "no-store" })
+  if (!res.ok) {
+    const errorText = await res.text()
+    console.error("Failed to fetch categories:", res.status, errorText)
+    throw new Error("Failed to load categories")
+  }
   return res.json()
+}
+
+export async function createCategory(data: { name: string }): Promise<Category> {
+  const tokens = getTokens()
+  if (!tokens?.access) throw new Error("Not authenticated")
+  const res = await fetchWithAuth(`${API_BASE}/api/products/categories/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || "Failed to create category")
+  }
+  return res.json()
+}
+
+export async function updateCategory(id: number, data: { name: string }): Promise<Category> {
+  const tokens = getTokens()
+  if (!tokens?.access) throw new Error("Not authenticated")
+  const res = await fetchWithAuth(`${API_BASE}/api/products/categories/${id}/`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || "Failed to update category")
+  }
+  return res.json()
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  const tokens = getTokens()
+  if (!tokens?.access) throw new Error("Not authenticated")
+  const res = await fetchWithAuth(`${API_BASE}/api/products/categories/${id}/`, {
+    method: "DELETE",
+  })
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || "Failed to delete category")
+  }
 }
 
 export async function createProduct(data: {
@@ -239,5 +288,172 @@ export async function deleteProduct(id: number) {
     throw new Error(msg || "Failed to delete product")
   }
   return true
+}
+
+// Orders
+export type OrderItem = {
+  id: number
+  product: number
+  product_name: string
+  product_image: string
+  quantity: number
+  price: string
+  subtotal: string
+}
+
+export type Order = {
+  id: number
+  order_id: string
+  buyer: number
+  buyer_username: string
+  buyer_email: string
+  status: string
+  total_amount: string
+  shipping_address: string
+  delivery_location: number | null
+  delivery_location_name: string | null
+  delivery_location_state: string | null
+  delivery_fee: string
+  notes: string
+  items: OrderItem[]
+  created_at: string
+  updated_at: string
+}
+
+export async function fetchOrders(): Promise<Order[]> {
+  const res = await fetchWithAuth(`${API_BASE}/api/orders/orders/`, { cache: "no-store" })
+  if (!res.ok) throw new Error("Failed to load orders")
+  return res.json()
+}
+
+export async function fetchOrder(id: number): Promise<Order> {
+  const res = await fetchWithAuth(`${API_BASE}/api/orders/orders/${id}/`, { cache: "no-store" })
+  if (!res.ok) throw new Error("Failed to load order")
+  return res.json()
+}
+
+export async function createOrder(data: {
+  items: Array<{ product_id: number; quantity: number }>
+  location_id?: number | null
+  detailed_address?: string
+  notes?: string
+}): Promise<Order> {
+  const res = await fetchWithAuth(`${API_BASE}/api/orders/orders/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: "Failed to create order" }))
+    throw new Error(errorData.detail || JSON.stringify(errorData))
+  }
+  return res.json()
+}
+
+export async function updateOrderStatus(orderId: number, status: string): Promise<Order> {
+  const res = await fetchWithAuth(`${API_BASE}/api/orders/orders/${orderId}/update_status/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) {
+    const msg = await res.text()
+    throw new Error(msg || "Failed to update order status")
+  }
+  return res.json()
+}
+
+// States and Locations
+export type State = {
+  id: number
+  name: string
+  code: string
+  is_active: boolean
+}
+
+export type Location = {
+  id: number
+  state: State
+  state_id: number
+  name: string
+  delivery_fee: string
+  is_active: boolean
+}
+
+export async function fetchStates(): Promise<State[]> {
+  const res = await fetch(`${API_BASE}/api/orders/states/`, { cache: "no-store" })
+  if (!res.ok) throw new Error("Failed to load states")
+  return res.json()
+}
+
+export async function fetchLocations(stateId?: number): Promise<Location[]> {
+  const url = stateId
+    ? `${API_BASE}/api/orders/locations/?state_id=${stateId}`
+    : `${API_BASE}/api/orders/locations/`
+  const res = await fetch(url, { cache: "no-store" })
+  if (!res.ok) throw new Error("Failed to load locations")
+  return res.json()
+}
+
+// Payments
+export type Payment = {
+  id: number
+  order: number
+  order_id: string
+  user: number
+  user_username: string
+  amount: string
+  currency: string
+  status: string
+  payment_method: string | null
+  tx_ref: string | null
+  flw_ref: string | null
+  transaction_id: string | null
+  customer_email: string
+  customer_name: string
+  customer_phone: string
+  metadata: Record<string, unknown>
+  failure_reason: string | null
+  created_at: string
+  updated_at: string
+  paid_at: string | null
+}
+
+export async function initiatePayment(data: {
+  order_id: number
+  customer_email: string
+  customer_name: string
+  customer_phone?: string
+  payment_method?: string
+}): Promise<{ payment_id: number; payment_link: string; tx_ref: string }> {
+  const res = await fetchWithAuth(`${API_BASE}/api/payments/payments/initiate/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: "Failed to initiate payment" }))
+    throw new Error(errorData.error || errorData.detail || JSON.stringify(errorData))
+  }
+  return res.json()
+}
+
+export async function verifyPayment(txRef: string): Promise<Payment> {
+  const res = await fetchWithAuth(`${API_BASE}/api/payments/payments/verify/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tx_ref: txRef }),
+  })
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: "Failed to verify payment" }))
+    throw new Error(errorData.error || errorData.detail || JSON.stringify(errorData))
+  }
+  return res.json()
+}
+
+export async function fetchPayments(): Promise<Payment[]> {
+  const res = await fetchWithAuth(`${API_BASE}/api/payments/payments/`, { cache: "no-store" })
+  if (!res.ok) throw new Error("Failed to load payments")
+  return res.json()
 }
 

@@ -57,9 +57,10 @@ const workflow = [
 ]
 
 export default function Home() {
-  const { addItem } = useCart()
+  const { addItem, state } = useCart()
   const [featured, setFeatured] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const itemCount = state.items.length
 
   useEffect(() => {
     const load = async () => {
@@ -105,6 +106,17 @@ export default function Home() {
           </Link>
         </nav>
         <div className="flex items-center gap-3">
+          <div className="relative">
+            <Link href="/cart" className="relative flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-medium text-foreground ring-1 ring-slate-100 transition hover:bg-slate-50">
+              <ShoppingBasket className="size-4" />
+              Cart
+              {itemCount > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-lime-600 text-xs font-bold text-white">
+                  {itemCount > 99 ? "99+" : itemCount}
+                </span>
+              )}
+            </Link>
+          </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/products">View catalog</Link>
           </Button>

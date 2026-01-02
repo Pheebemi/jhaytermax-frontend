@@ -41,24 +41,30 @@ export default function AdminProductsPage() {
     const init = async () => {
       const tokens = getTokens()
       if (!tokens) {
-        router.replace("/admin/login")
+        router.replace("/login")
         return
       }
       try {
         const me = await ensureProfileWithRefresh()
         const isAdmin = me.role === "admin" || me.is_staff || me.is_superuser
         if (!isAdmin) {
-          router.replace("/admin/login")
+          router.replace("/login")
           return
         }
-        const [p, c] = await Promise.all([fetchProducts(), fetchCategories()])
-        setProducts(p)
-        setCategories(c)
+        setLoading(false)
+        // Load data after auth check passes
+        try {
+          const [p, c] = await Promise.all([fetchProducts(), fetchCategories()])
+          setProducts(p)
+          setCategories(c)
+        } catch (err: any) {
+          console.error("Failed to load data:", err)
+          toast.error("Failed to load products or categories", { description: err?.message })
+          // Don't redirect on data fetch errors
+        }
       } catch {
         router.replace("/login")
         return
-      } finally {
-        setLoading(false)
       }
     }
     init()

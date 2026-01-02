@@ -131,9 +131,11 @@ export default function CartPage() {
                   <span>Total</span>
                   <span>{formatNaira(subtotal)}</span>
                 </div>
-                <Button className="mt-4 w-full gap-2">
-                  <ShoppingBasket className="size-4" />
-                  Proceed to checkout
+                <Button className="mt-4 w-full gap-2" asChild>
+                  <Link href="/checkout">
+                    <ShoppingBasket className="size-4" />
+                    Proceed to checkout
+                  </Link>
                 </Button>
               </div>
             </div>
