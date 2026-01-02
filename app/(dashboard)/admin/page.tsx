@@ -199,8 +199,9 @@ export default function AdminDashboardPage() {
                   type="monotone"
                   dataKey="orders"
                   stroke="var(--color-orders)"
-                  strokeWidth={2}
-                  dot={false}
+                  strokeWidth={3}
+                  dot={{ fill: "var(--color-orders)", r: 4, strokeWidth: 2, stroke: "#fff" }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                 />
               </LineChart>
             </ChartContainer>
@@ -238,8 +239,9 @@ export default function AdminDashboardPage() {
                   type="monotone"
                   dataKey="revenue"
                   stroke="var(--color-revenue)"
-                  strokeWidth={2}
-                  dot={false}
+                  strokeWidth={3}
+                  dot={{ fill: "var(--color-revenue)", r: 4, strokeWidth: 2, stroke: "#fff" }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                 />
               </LineChart>
             </ChartContainer>

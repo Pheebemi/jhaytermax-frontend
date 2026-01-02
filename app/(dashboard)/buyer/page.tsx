@@ -191,8 +191,9 @@ export default function BuyerDashboardPage() {
                     type="monotone"
                     dataKey="orders"
                     stroke="var(--color-orders)"
-                    strokeWidth={2}
-                    dot={false}
+                    strokeWidth={3}
+                    dot={{ fill: "var(--color-orders)", r: 4, strokeWidth: 2, stroke: "#fff" }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                   />
                 </LineChart>
               </ChartContainer>
@@ -230,8 +231,9 @@ export default function BuyerDashboardPage() {
                     type="monotone"
                     dataKey="spending"
                     stroke="var(--color-spending)"
-                    strokeWidth={2}
-                    dot={false}
+                    strokeWidth={3}
+                    dot={{ fill: "var(--color-spending)", r: 4, strokeWidth: 2, stroke: "#fff" }}
+                    activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                   />
                 </LineChart>
               </ChartContainer>
