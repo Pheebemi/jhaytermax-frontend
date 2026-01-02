@@ -3,23 +3,28 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, BarChart3, CheckCircle2, Package, ShieldCheck, Truck, Users } from "lucide-react"
+import { ArrowRight, Package } from "lucide-react"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts"
 
 import { Button } from "@/components/ui/button"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { formatNaira } from "@/lib/currency"
 import {
   fetchProducts,
   fetchCategories,
+  fetchOrders,
   getTokens,
   ensureProfileWithRefresh,
   type Product,
   type Category,
+  type Order,
 } from "@/lib/auth"
 
 export default function AdminDashboardPage() {
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
   const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
@@ -39,9 +44,10 @@ export default function AdminDashboardPage() {
         setAuthChecked(true)
         // Load data after auth check passes
         try {
-          const [p, c] = await Promise.all([fetchProducts(), fetchCategories()])
+          const [p, c, o] = await Promise.all([fetchProducts(), fetchCategories(), fetchOrders()])
           setProducts(p)
           setCategories(c)
+          setOrders(o)
         } catch (err: any) {
           console.error("Failed to load data:", err)
           // Don't redirect on data fetch errors, just log them
@@ -54,12 +60,55 @@ export default function AdminDashboardPage() {
     init()
   }, [router])
 
+  // Calculate real statistics
   const productCount = products.length
   const categoryCount = categories.length
   const lowStock = products.filter((p) => p.quantity <= 5).length
   const totalValue = products.reduce((sum, p) => sum + Number(p.price) * p.quantity, 0)
+  const totalOrders = orders.length
+  const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0)
+  const pendingOrders = orders.filter((o) => o.status === "pending").length
+  const deliveredOrders = orders.filter((o) => o.status === "delivered").length
+
+  // Prepare chart data - orders over last 30 days
+  const ordersChartData = useMemo(() => {
+    const last30Days = Array.from({ length: 30 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (29 - i))
+      return date.toISOString().split("T")[0]
+    })
+
+    return last30Days.map((date) => {
+      const dayOrders = orders.filter((o) => o.created_at.startsWith(date))
+      const revenue = dayOrders.reduce((sum, o) => sum + Number(o.total_amount), 0)
+      return {
+        date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        orders: dayOrders.length,
+        revenue: revenue,
+      }
+    })
+  }, [orders])
+
+  // Prepare revenue chart data
+  const revenueChartData = useMemo(() => {
+    const last30Days = Array.from({ length: 30 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (29 - i))
+      return date.toISOString().split("T")[0]
+    })
+
+    return last30Days.map((date) => {
+      const dayOrders = orders.filter((o) => o.created_at.startsWith(date))
+      const revenue = dayOrders.reduce((sum, o) => sum + Number(o.total_amount), 0)
+      return {
+        date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        revenue: revenue,
+      }
+    })
+  }, [orders])
 
   const topProducts = useMemo(() => products.slice(0, 4), [products])
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders])
 
   if (!authChecked) {
     return (
@@ -73,10 +122,21 @@ export default function AdminDashboardPage() {
 
   const kpis = [
     { label: "Products", value: productCount, change: `${lowStock} low stock` },
-    { label: "Categories", value: categoryCount, change: "Managed in admin" },
-    { label: "Inventory value", value: formatNaira(totalValue), change: "Calculated live" },
-    { label: "Low stock", value: lowStock, change: "Qty ≤ 5" },
+    { label: "Categories", value: categoryCount, change: "Active categories" },
+    { label: "Total Orders", value: totalOrders, change: `${pendingOrders} pending` },
+    { label: "Total Revenue", value: formatNaira(totalRevenue), change: `${deliveredOrders} delivered` },
   ]
+
+  const chartConfig = {
+    orders: {
+      label: "Orders",
+      color: "hsl(var(--chart-1))",
+    },
+    revenue: {
+      label: "Revenue",
+      color: "hsl(var(--chart-2))",
+    },
+  }
 
   return (
     <div className="space-y-8">
@@ -93,7 +153,7 @@ export default function AdminDashboardPage() {
             <Link href="/admin/products">Manage products</Link>
           </Button>
           <Button className="gap-2" asChild>
-            <Link href="/orders">
+            <Link href="/admin/orders">
               Manage orders
               <ArrowRight className="size-4" />
             </Link>
@@ -114,38 +174,114 @@ export default function AdminDashboardPage() {
         ))}
       </section>
 
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-5 shadow-sm ring-1 ring-black/5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Orders</p>
+              <h2 className="text-lg font-semibold text-foreground">Orders over time (30 days)</h2>
+            </div>
+          </div>
+          <div className="mt-4">
+            <ChartContainer config={chartConfig}>
+              <LineChart data={ordersChartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => value}
+                />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line
+                  type="monotone"
+                  dataKey="orders"
+                  stroke="var(--color-orders)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ChartContainer>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-5 shadow-sm ring-1 ring-black/5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Revenue</p>
+              <h2 className="text-lg font-semibold text-foreground">Revenue over time (30 days)</h2>
+            </div>
+          </div>
+          <div className="mt-4">
+            <ChartContainer config={chartConfig}>
+              <LineChart data={revenueChartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => value}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`}
+                />
+                <ChartTooltip
+                  content={<ChartTooltipContent formatter={(value) => formatNaira(Number(value))} />}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-revenue)"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ChartContainer>
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="rounded-3xl border border-slate-100 bg-white/90 p-5 shadow-sm ring-1 ring-black/5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-slate-700">Fulfillment</p>
-              <h2 className="text-lg font-semibold text-foreground">Performance snapshot</h2>
+              <p className="text-sm font-semibold text-slate-700">Recent orders</p>
+              <h2 className="text-lg font-semibold text-foreground">Latest activity</h2>
             </div>
-            <Button variant="ghost" size="sm">
-              Export
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/admin/orders">View all</Link>
             </Button>
           </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            {[
-              { label: "On-time dispatch", value: "93%", icon: Truck },
-              { label: "QA pass rate", value: "97%", icon: CheckCircle2 },
-              { label: "Fill rate", value: "96%", icon: Package },
-            ].map((item) => {
-              const Icon = item.icon
-              return (
+          <div className="mt-4 space-y-3">
+            {recentOrders.length > 0 ? (
+              recentOrders.map((order) => (
                 <div
-                  key={item.label}
-                  className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 shadow-inner"
+                  key={order.id}
+                  className="flex items-center justify-between rounded-2xl border border-lime-100 bg-lime-50/60 px-4 py-3"
                 >
-                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <Icon className="size-4 text-lime-700" />
-                    {item.label}
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{order.order_id}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {order.buyer_username} • {new Date(order.created_at).toLocaleDateString()}
+                    </p>
                   </div>
-                  <p className="mt-2 text-2xl font-semibold">{item.value}</p>
-                  <p className="text-xs text-muted-foreground">Past 30 days</p>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-foreground">{formatNaira(Number(order.total_amount))}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{order.status}</p>
+                  </div>
                 </div>
-              )
-            })}
+              ))
+            ) : (
+              <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-muted-foreground">
+                No orders yet.
+              </div>
+            )}
           </div>
         </div>
 
@@ -183,77 +319,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </section>
-
-      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-3xl border border-slate-100 bg-white/90 p-5 shadow-sm ring-1 ring-black/5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Supplier approvals</p>
-              <h2 className="text-lg font-semibold text-foreground">Pending reviews</h2>
-            </div>
-            <Button variant="ghost" size="sm">
-              View all
-            </Button>
-          </div>
-          <div className="mt-4 space-y-3">
-            {[
-              { id: "SUP-208", name: "Green Fields Co-op", region: "Kaduna", status: "Pending QA docs" },
-              { id: "SUP-207", name: "Coastal Fresh Farms", region: "Rivers", status: "Awaiting contract" },
-              { id: "SUP-206", name: "Savanna Agro", region: "Kano", status: "Verification call" },
-            ].map((supplier) => (
-              <div
-                key={supplier.id}
-                className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{supplier.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {supplier.id} • {supplier.region}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-700">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-amber-800 ring-1 ring-amber-100">
-                    <ShieldCheck className="size-3.5" />
-                    {supplier.status}
-                  </span>
-                  <Button size="sm" variant="outline">
-                    Review
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-100 bg-white/90 p-5 shadow-sm ring-1 ring-black/5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Teams</p>
-              <h2 className="text-lg font-semibold text-foreground">Ops & QA</h2>
-            </div>
-            <Button variant="ghost" size="sm">Manage roles</Button>
-          </div>
-          <div className="mt-4 space-y-3">
-            {[
-              { label: "Ops managers", count: 6 },
-              { label: "QA inspectors", count: 14 },
-              { label: "Support agents", count: 9 },
-            ].map((team) => (
-              <div
-                key={team.label}
-                className="flex items-center justify-between rounded-2xl border border-lime-100 bg-lime-50/60 px-4 py-3"
-              >
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Users className="size-4 text-lime-700" />
-                  {team.label}
-                </div>
-                <span className="text-sm font-semibold text-foreground">{team.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   )
 }
-
