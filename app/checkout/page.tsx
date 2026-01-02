@@ -90,6 +90,7 @@ export default function CheckoutPage() {
 
       clear()
       toast.success("Order created successfully")
+      console.log("Order created:", order, "Order ID:", order.id)
       router.push(`/payment?order_id=${order.id}`)
     } catch (err: any) {
       toast.error("Failed to create order", { description: err?.message })

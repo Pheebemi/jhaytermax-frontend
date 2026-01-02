@@ -23,21 +23,35 @@ export default function PaymentPage() {
           return
         }
 
+        // Parse and validate order ID
+        const parsedOrderId = Number(orderId)
+        console.log("Order ID from URL:", orderId, "Type:", typeof orderId, "Parsed:", parsedOrderId)
+        
+        if (!orderId || orderId === "null" || orderId === "undefined" || isNaN(parsedOrderId)) {
+          console.error("Invalid order ID - orderId:", orderId, "parsedOrderId:", parsedOrderId)
+          toast.error("Invalid order ID", { description: `Received: ${orderId}. Please try again.` })
+          router.push("/checkout")
+          return
+        }
+        
+        if (parsedOrderId <= 0) {
+          console.error("Order ID is not positive:", parsedOrderId)
+          toast.error("Invalid order ID", { description: `Order ID must be positive. Received: ${parsedOrderId}` })
+          router.push("/checkout")
+          return
+        }
+
         // Ensure user is authenticated
         const profile = await ensureProfileWithRefresh()
 
         // Initiate payment
-        const paymentData: {
-          order_id: number
-          customer_email: string
-          customer_name: string
-          customer_phone?: string
-          payment_method?: string
-        } = {
-          order_id: Number.parseInt(orderId, 10),
+        const paymentData = {
+          order_id: parsedOrderId,
           customer_email: profile.email,
           customer_name: profile.username,
         }
+        
+        console.log("Initiating payment with data:", paymentData)
         const result = await initiatePayment(paymentData)
 
         // Redirect to Flutterwave payment page
