@@ -207,10 +207,10 @@ export default function Home() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-semibold text-foreground">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.metric}</p>
+                      <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                       </div>
                       <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-100">
-                      {item.note}
+                      {item.category?.name || 'General'}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
