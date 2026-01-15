@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import { ensureProfileWithRefresh } from "@/lib/auth"
 import { initiatePayment } from "@/lib/auth"
 
-export default function PaymentPage() {
+function PaymentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -74,6 +74,16 @@ export default function PaymentPage() {
         <p className="mt-4 text-sm font-medium text-foreground">Redirecting to payment...</p>
       </div>
     </div>
+  )
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="size-8 animate-spin" />
+    </div>}>
+      <PaymentContent />
+    </Suspense>
   )
 }
 
