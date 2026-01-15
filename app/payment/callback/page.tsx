@@ -131,11 +131,11 @@ export default function PaymentCallbackPage() {
               <Button
                 variant="outline"
                 className="gap-2"
-                onClick={handleVerify}
+                onClick={() => handleVerify(true)}
                 disabled={status === "loading"}
               >
                 <RefreshCw className="size-4" />
-                {status === "loading" ? "Verifying..." : "Retry Verification"}
+                {["loading"].includes(status) ? "Verifying..." : "Retry Verification"}
               </Button>
               <div className="flex gap-3">
                 <Button variant="outline" asChild className="flex-1">

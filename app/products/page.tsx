@@ -141,7 +141,7 @@ export default function ProductsPage() {
                       onClick={() =>
                       {
                         addItem({
-                          id: product.id,
+                          id: String(product.id),
                           name: product.name,
                           price: Number(product.price),
                           metric: product.category?.name ?? "Uncategorized",

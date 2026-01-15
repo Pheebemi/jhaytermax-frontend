@@ -333,7 +333,7 @@ export default function Home() {
                       className="gap-2"
                       onClick={() => {
                         addItem({
-                          id: item.id,
+                          id: String(item.id),
                           name: item.name,
                           price: Number(item.price),
                           metric: item.category?.name ?? "Uncategorized",
