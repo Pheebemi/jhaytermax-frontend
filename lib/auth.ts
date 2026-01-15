@@ -348,9 +348,7 @@ export async function createOrder(data: {
     throw new Error(errorData.detail || JSON.stringify(errorData))
   }
   return res.json()
-}
-
-export async function updateOrderStatus(orderId: number, status: string): Promise<Order> {
+}export async function updateOrderStatus(orderId: number, status: string): Promise<Order> {
   const res = await fetchWithAuth(`${API_BASE}/api/orders/orders/${orderId}/update_status/`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -444,6 +442,13 @@ export async function verifyPayment(txRef: string): Promise<Payment> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tx_ref: txRef }),
   })
+  
+  // Handle 202 Accepted - transaction is still being processed
+  if (res.status === 202) {
+    const data = await res.json().catch(() => ({ error: "Transaction is being processed" }))
+    throw new Error(data.error || data.message || "Transaction not yet available. Please wait a moment and try again.")
+  }
+  
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ error: "Failed to verify payment" }))
     throw new Error(errorData.error || errorData.detail || JSON.stringify(errorData))
@@ -456,4 +461,3 @@ export async function fetchPayments(): Promise<Payment[]> {
   if (!res.ok) throw new Error("Failed to load payments")
   return res.json()
 }
-

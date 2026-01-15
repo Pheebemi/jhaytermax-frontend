@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import { CheckCircle2, XCircle, Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 
@@ -13,51 +13,92 @@ export default function PaymentCallbackPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<"loading" | "success" | "failed">("loading")
-  const [message, setMessage] = useState("")
+  const [message, setMessage] = useState("Processing payment...")
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hasRetriedRef = useRef(false)
+
+  const handleVerify = async (isRetry: boolean = false) => {
+    try {
+      const txRef = searchParams.get("tx_ref")
+      const callbackStatus = searchParams.get("status")
+
+      if (!txRef) {
+        setStatus("failed")
+        setMessage("Transaction reference not found")
+        return
+      }
+
+      if (callbackStatus === "cancelled") {
+        setStatus("failed")
+        setMessage("Payment was cancelled")
+        return
+      }
+
+      setStatus("loading")
+      setMessage(isRetry ? "Verifying payment again..." : "Verifying payment...")
+
+      const payment = await verifyPayment(txRef)
+
+      if (payment.status === "successful") {
+        setStatus("success")
+        setMessage("Payment successful!")
+        toast.success("Payment verified successfully")
+        // Redirect to buyer dashboard after a short delay
+        setTimeout(() => {
+          router.push("/buyer")
+        }, 2000)
+      } else {
+        setStatus("failed")
+        setMessage(payment.failure_reason || "Payment verification failed")
+        toast.error("Payment verification failed", { description: payment.failure_reason })
+      }
+    } catch (err: any) {
+      const errorMsg = err?.message || "Failed to verify payment"
+      
+      // If it's a processing error and we haven't retried yet, retry automatically
+      const isProcessingError = errorMsg.toLowerCase().includes("not yet available") || 
+          errorMsg.toLowerCase().includes("being processed") ||
+          errorMsg.toLowerCase().includes("transaction not found")
+      
+      if (isProcessingError && !hasRetriedRef.current && !isRetry) {
+        // Auto-retry once after 3 seconds
+        hasRetriedRef.current = true
+        setMessage("Payment is being processed. Checking again in a moment...")
+        
+        retryTimeoutRef.current = setTimeout(() => {
+          handleVerify(true)
+        }, 3000)
+        return
+      }
+      
+      // If retry also failed or it's a different error, show failure
+      setStatus("failed")
+      if (isProcessingError) {
+        setMessage("Payment is still being processed by Flutterwave. Please wait a moment and try again, or check your orders page. The payment will be updated automatically via webhook.")
+      } else {
+        setMessage(errorMsg)
+      }
+      
+      toast.error("Payment verification error", { description: errorMsg })
+    }
+  }
 
   useEffect(() => {
-    const verify = async () => {
-      try {
-        const txRef = searchParams.get("tx_ref")
-        const status = searchParams.get("status")
+    // Wait 2 seconds before first verification to give Flutterwave time to process
+    setMessage("Processing payment...")
+    const initialTimeout = setTimeout(() => {
+      handleVerify(false)
+    }, 2000)
 
-        if (!txRef) {
-          setStatus("failed")
-          setMessage("Transaction reference not found")
-          return
-        }
-
-        if (status === "cancelled") {
-          setStatus("failed")
-          setMessage("Payment was cancelled")
-          return
-        }
-
-        // Verify payment
-        const payment = await verifyPayment(txRef)
-
-        if (payment.status === "successful") {
-          setStatus("success")
-          setMessage("Payment successful!")
-          toast.success("Payment verified successfully")
-          // Redirect to buyer dashboard after a short delay
-          setTimeout(() => {
-            router.push("/buyer")
-          }, 2000)
-        } else {
-          setStatus("failed")
-          setMessage(payment.failure_reason || "Payment verification failed")
-          toast.error("Payment verification failed", { description: payment.failure_reason })
-        }
-      } catch (err: any) {
-        setStatus("failed")
-        setMessage(err?.message || "Failed to verify payment")
-        toast.error("Payment verification error", { description: err?.message })
+    // Cleanup
+    return () => {
+      clearTimeout(initialTimeout)
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
       }
     }
-
-    verify()
-  }, [router, searchParams])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-white to-amber-50">
@@ -65,7 +106,7 @@ export default function PaymentCallbackPage() {
         {status === "loading" && (
           <div className="text-center">
             <Loader2 className="mx-auto size-12 animate-spin text-lime-600" />
-            <p className="mt-4 text-sm font-medium text-foreground">Verifying payment...</p>
+            <p className="mt-4 text-sm font-medium text-foreground">{message || "Verifying payment..."}</p>
           </div>
         )}
 
@@ -84,15 +125,26 @@ export default function PaymentCallbackPage() {
         {status === "failed" && (
           <div className="text-center">
             <XCircle className="mx-auto size-12 text-red-600" />
-            <h2 className="mt-4 text-xl font-semibold text-foreground">Payment Failed</h2>
+            <h2 className="mt-4 text-xl font-semibold text-foreground">Payment Verification</h2>
             <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-            <div className="mt-6 flex gap-3">
-              <Button variant="outline" asChild>
-                <Link href="/cart">Back to Cart</Link>
+            <div className="mt-6 flex flex-col gap-3">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={handleVerify}
+                disabled={status === "loading"}
+              >
+                <RefreshCw className="size-4" />
+                {status === "loading" ? "Verifying..." : "Retry Verification"}
               </Button>
-              <Button asChild>
-                <Link href="/buyer">Go to Dashboard</Link>
-              </Button>
+              <div className="flex gap-3">
+                <Button variant="outline" asChild className="flex-1">
+                  <Link href="/orders">View Orders</Link>
+                </Button>
+                <Button asChild className="flex-1">
+                  <Link href="/buyer">Go to Dashboard</Link>
+                </Button>
+              </div>
             </div>
           </div>
         )}
