@@ -12,7 +12,7 @@ import { verifyPayment } from "@/lib/auth"
 export default function PaymentCallbackPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<"loading" | "success" | "failed">("loading")
+  const [status, setStatus] = useState<"loading" | "success" | "failed">("loading" as const)
   const [message, setMessage] = useState("Processing payment...")
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hasRetriedRef = useRef(false)
@@ -132,10 +132,10 @@ export default function PaymentCallbackPage() {
                 variant="outline"
                 className="gap-2"
                 onClick={() => handleVerify(true)}
-                disabled={status === "loading"}
+                disabled={(status as "loading" | "success" | "failed") === "loading"}
               >
                 <RefreshCw className="size-4" />
-                {["loading"].includes(status) ? "Verifying..." : "Retry Verification"}
+                {(status as "loading" | "success" | "failed") === "loading" ? "Verifying..." : "Retry Verification"}
               </Button>
               <div className="flex gap-3">
                 <Button variant="outline" asChild className="flex-1">
