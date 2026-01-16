@@ -131,7 +131,12 @@ export async function fetchWithAuth(input: string, init: RequestInit = {}) {
 export async function fetchProducts(): Promise<Product[]> {
   const res = await fetch(`${API_BASE}/api/products/`, { cache: "no-store" })
   if (!res.ok) throw new Error("Failed to load products")
-  return res.json()
+  const data = await res.json()
+  if (!Array.isArray(data)) {
+    console.error("Expected array from products API, got:", data)
+    return []
+  }
+  return data
 }
 
 export async function fetchProduct(id: string | number): Promise<Product> {
@@ -163,7 +168,12 @@ export async function fetchCategories(useAuth = false): Promise<Category[]> {
     console.error("Failed to fetch categories:", res.status, errorText)
     throw new Error("Failed to load categories")
   }
-  return res.json()
+  const data = await res.json()
+  if (!Array.isArray(data)) {
+    console.error("Expected array from categories API, got:", data)
+    return []
+  }
+  return data
 }
 
 export async function createCategory(data: { name: string }): Promise<Category> {
@@ -323,10 +333,13 @@ export type Order = {
 export async function fetchOrders(): Promise<Order[]> {
   const res = await fetchWithAuth(`${API_BASE}/api/orders/orders/`, { cache: "no-store" })
   if (!res.ok) throw new Error("Failed to load orders")
-  return res.json()
-}
-
-export async function fetchOrder(id: number): Promise<Order> {
+  const data = await res.json()
+  if (!Array.isArray(data)) {
+    console.error("Expected array from orders API, got:", data)
+    return []
+  }
+  return data
+}export async function fetchOrder(id: number): Promise<Order> {
   const res = await fetchWithAuth(`${API_BASE}/api/orders/orders/${id}/`, { cache: "no-store" })
   if (!res.ok) throw new Error("Failed to load order")
   return res.json()
@@ -381,7 +394,12 @@ export type Location = {
 export async function fetchStates(): Promise<State[]> {
   const res = await fetch(`${API_BASE}/api/orders/states/`, { cache: "no-store" })
   if (!res.ok) throw new Error("Failed to load states")
-  return res.json()
+  const data = await res.json()
+  if (!Array.isArray(data)) {
+    console.error("Expected array from states API, got:", data)
+    return []
+  }
+  return data
 }
 
 export async function fetchLocations(stateId?: number): Promise<Location[]> {
@@ -390,7 +408,12 @@ export async function fetchLocations(stateId?: number): Promise<Location[]> {
     : `${API_BASE}/api/orders/locations/`
   const res = await fetch(url, { cache: "no-store" })
   if (!res.ok) throw new Error("Failed to load locations")
-  return res.json()
+  const data = await res.json()
+  if (!Array.isArray(data)) {
+    console.error("Expected array from locations API, got:", data)
+    return []
+  }
+  return data
 }
 
 // Payments
