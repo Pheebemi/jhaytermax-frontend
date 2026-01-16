@@ -36,8 +36,8 @@ export default function BuyerDashboardPage() {
         // Load data after auth check passes
         try {
           const [data, o] = await Promise.all([fetchProducts(), fetchOrders()])
-          setStaples(data.slice(0, 3))
-          setOrders(o)
+          setStaples(Array.isArray(data) ? data.slice(0, 3) : [])
+          setOrders(Array.isArray(o) ? o : [])
         } catch (err: any) {
           console.error("Failed to load data:", err)
         }
@@ -50,11 +50,12 @@ export default function BuyerDashboardPage() {
   }, [router])
 
   // Calculate real statistics
-  const totalOrders = orders.length
-  const pendingOrders = orders.filter((o) => o.status === "pending" || o.status === "processing").length
-  const deliveredOrders = orders.filter((o) => o.status === "delivered").length
-  const totalSpent = orders.reduce((sum, o) => sum + Number(o.total_amount), 0)
-  const last30DaysSpent = orders
+  const safeOrders = Array.isArray(orders) ? orders : []
+  const totalOrders = safeOrders.length
+  const pendingOrders = safeOrders.filter((o) => o.status === "pending" || o.status === "processing").length
+  const deliveredOrders = safeOrders.filter((o) => o.status === "delivered").length
+  const totalSpent = safeOrders.reduce((sum, o) => sum + Number(o.total_amount), 0)
+  const last30DaysSpent = safeOrders
     .filter((o) => {
       const orderDate = new Date(o.created_at)
       const thirtyDaysAgo = new Date()
@@ -72,13 +73,13 @@ export default function BuyerDashboardPage() {
     })
 
     return last30Days.map((date) => {
-      const dayOrders = orders.filter((o) => o.created_at.startsWith(date))
+      const dayOrders = safeOrders.filter((o) => o.created_at.startsWith(date))
       return {
         date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         orders: dayOrders.length,
       }
     })
-  }, [orders])
+  }, [safeOrders])
 
   // Prepare spending chart data
   const spendingChartData = useMemo(() => {
@@ -89,16 +90,16 @@ export default function BuyerDashboardPage() {
     })
 
     return last30Days.map((date) => {
-      const dayOrders = orders.filter((o) => o.created_at.startsWith(date))
+      const dayOrders = safeOrders.filter((o) => o.created_at.startsWith(date))
       const spending = dayOrders.reduce((sum, o) => sum + Number(o.total_amount), 0)
       return {
         date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         spending: spending,
       }
     })
-  }, [orders])
+  }, [safeOrders])
 
-  const recentOrders = useMemo(() => orders.slice(0, 4), [orders])
+  const recentOrders = useMemo(() => safeOrders.slice(0, 4), [safeOrders])
 
   const chartConfig = {
     orders: {

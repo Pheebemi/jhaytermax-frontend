@@ -66,7 +66,7 @@ export default function Home() {
     const load = async () => {
       try {
         const data = await fetchProducts()
-        setFeatured(data.slice(0, 4))
+        setFeatured(Array.isArray(data) ? data.slice(0, 4) : [])
       } catch {
         setFeatured([])
       } finally {
@@ -199,7 +199,7 @@ export default function Home() {
                 </span>
               </div>
               <div className="mt-6 space-y-3">
-              {(loading ? [] : featured.slice(0, 3)).map((item) => (
+              {(loading ? [] : (Array.isArray(featured) ? featured.slice(0, 3) : [])).map((item) => (
                   <div
                   key={item.id}
                     className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
@@ -284,7 +284,7 @@ export default function Home() {
             </div>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {(loading ? [] : featured).map((item, idx) => (
+            {(loading ? [] : (Array.isArray(featured) ? featured : [])).map((item, idx) => (
               <div
                 key={item.id}
                 className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/90 shadow-sm ring-1 ring-black/5 transition hover:-translate-y-1 hover:shadow-md"
